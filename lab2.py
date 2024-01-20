@@ -99,3 +99,7 @@ v = v * ymid + ymid
 image_barrel = cv2.remap(image, u.astype(np.float32), v.astype(np.float32), cv2.INTER_LINEAR)
 compare_images(image, image_barrel, 'barrel')
 
+# compiling image from 2
+
+top_part = cv2.imread('top.jpg')
+bottom_part = cv2.imread('bottom.jpg')
