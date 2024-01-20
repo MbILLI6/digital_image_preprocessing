@@ -101,5 +101,37 @@ compare_images(image, image_barrel, 'barrel')
 
 # compiling image from 2
 
+# Load top and bottom images
 top_part = cv2.imread('top.jpg')
+top_part = cv2.resize(top_part, (500, 300))
+plt.figure()
+plt.imshow(cv2.cvtColor(top_part, cv2.COLOR_BGR2RGB))
+plt.title('Top Part')
+plt.axis('off')
+plt.show()
+
 bottom_part = cv2.imread('bottom.jpg')
+bottom_part = cv2.resize(bottom_part, (500, 300))
+plt.figure()
+plt.imshow(cv2.cvtColor(bottom_part, cv2.COLOR_BGR2RGB))
+plt.title('Bottom Part')
+plt.axis('off')
+plt.show()
+
+# Match template
+templ_size = 10
+templ = top_part[-templ_size:, :, :]
+res = cv2.matchTemplate(bottom_part, templ, cv2.TM_CCOEFF)
+min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+# Create result_img
+result_img = np.zeros((top_part.shape[0] + bottom_part.shape[0] - max_loc[1] - templ_size, top_part.shape[1], top_part.shape[2]), dtype=np.uint8)
+result_img[0:top_part.shape[0], :, :] = top_part
+result_img[top_part.shape[0]:, :, :] = bottom_part[max_loc[1] + templ_size:, :, :]
+
+# Display result_img
+plt.figure()
+plt.imshow(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB))
+plt.title('Result Image')
+plt.axis('off')
+plt.show()
