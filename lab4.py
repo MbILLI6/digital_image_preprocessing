@@ -60,42 +60,29 @@ compare_images(image, image_new, 'split images')
 # Read an image
 image_colored = cv2.imread("apples.jpg", cv2.IMREAD_COLOR)
 image_colored = cv2.resize(image_colored, (400, 300))
-# Convert to grayscale and to BW
+# Convert to grayscale
 image_gray = cv2.cvtColor(image_colored, cv2.COLOR_BGR2GRAY)
-ret, image_bw = cv2.threshold(image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-# Apply bwareaopen
-image_bw = bwareaopen(image_bw, 20, 4)
+# Apply bwareaopen to clean up the binary image
+image_bw = bwareaopen(image_gray, 20, 4)
 
-B = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-image_bw = cv2.morphologyEx(image_bw, cv2.MORPH_CLOSE, B)
+# Apply morphological operations for better foreground markers
+foreground_markers = cv2.distanceTransform(image_bw, cv2.DIST_L2, 5)
+_, foreground_markers = cv2.threshold(foreground_markers, 0.6 * foreground_markers.max(), 255, 0)
 
-# Do distance transformation
-# Find foreground location
-# Define foreground markers
-image_fg = cv2.distanceTransform(image_bw, cv2.DIST_L2, 5)
-ret, image_fg = cv2.threshold(image_fg, 0.6 * image_fg.max(), 255, 0)
-markers = np.zeros_like(image_gray, dtype=np.int32)
+# Apply morphological operations for better background markers
+background_markers = cv2.morphologyEx(image_bw, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+foreground_markers = foreground_markers.astype(np.uint8)
+background_markers = background_markers.astype(np.uint8)
 
-# Find background location
-image_bg = np.zeros_like(image_bw)
-markers_bg = np.zeros_like(image_gray, dtype=np.int32)  # Initialize with the size of the grayscale image
-markers_bg = cv2.watershed(image_colored, markers_bg)
-image_bg[markers_bg == -1] = 255
-# Define undefined area
-image_unk = cv2.subtract(~image_bg, image_fg.astype(image_bg.dtype))
-
-# Define all markers
-markers[image_unk == 255] = 0
+# Combine markers
+markers = cv2.addWeighted(foreground_markers, 0.5, background_markers, 0.5, 0)
+markers = markers.astype(np.int32)
 
 # Do watershed
-# Prepare for visualization
 markers = cv2.watershed(image_colored, markers)
-markers_jet = cv2.applyColorMap((markers.astype(np.float32) * 255 / (ret + 1)).astype(np.uint8), cv2.COLORMAP_JET)
-image_colored[markers == -1] = (0, 0, 255)
+image_colored[markers == -1] = [0, 0, 255]
 
-
-compare_images(image_colored, image_fg, 'foreground')
-compare_images(image_colored, image_bg, 'background')
-compare_images(image_colored, markers_jet, 'background')
-
+# Prepare for visualization
+markers_jet = cv2.applyColorMap((markers.astype(np.float32) * 255 / (markers.max() + 1)).astype(np.uint8), cv2.COLORMAP_JET)
+compare_images(image_colored, markers_jet, 'Segmentation Result')
